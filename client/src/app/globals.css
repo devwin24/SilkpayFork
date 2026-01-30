@@ -1,0 +1,150 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+}
+
+:root {
+  /* Enforce Dark Mode by default for this theme */
+  --radius: 1.25rem; /* More rounded corners */
+  
+  /* Main Background - Dark Gunmetal */
+  --background: #15171E; 
+  --foreground: #FFFFFF;
+
+  /* Cards - Slightly lighter */
+  --card: #1F212D;
+  --card-foreground: #FFFFFF;
+
+  /* Popovers */
+  --popover: #1F212D;
+  --popover-foreground: #FFFFFF;
+
+  /* Primary - Vibrant Purple/Blue from reference */
+  --primary: #6C5DD3;
+  --primary-foreground: #FFFFFF;
+
+  /* Secondary - Muted Blue/Grey */
+  --secondary: #2C303B;
+  --secondary-foreground: #FFFFFF;
+
+  /* Muted elements */
+  --muted: #2C303B;
+  --muted-foreground: #8F95B2;
+
+  /* Accents */
+  --accent: #2C303B;
+  --accent-foreground: #FFFFFF;
+
+  /* Destructive */
+  --destructive: #FF754C; /* Pinkish-Orange from reference */
+  --destructive-foreground: #FFFFFF;
+
+  /* Borders - Very subtle */
+  --border: #2C303B;
+  --input: #292C36;
+  --ring: #6C5DD3;
+
+  /* Chart Colors (Neon) */
+  --chart-1: #6C5DD3; /* Purple */
+  --chart-2: #FF754C; /* Pink/Orange */
+  --chart-3: #33C6F6; /* Cyan */
+  --chart-4: #FFCF5C; /* Yellow */
+  --chart-5: #FF5C8D; /* Pink */
+
+  /* Sidebar - Darker or matching Card */
+  --sidebar: #1F212D;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #6C5DD3;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2C303B;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #15171E; /* Blend with BG */
+  --sidebar-ring: #6C5DD3;
+}
+
+.dark {
+  --background: #1A1A1A;
+  --foreground: #F5F7FA;
+  --card: #262626;
+  --card-foreground: #F5F7FA;
+  --popover: #262626;
+  --popover-foreground: #F5F7FA;
+  --primary: #4A90E2;
+  --primary-foreground: #FFFFFF;
+  --secondary: #2C3E79;
+  --secondary-foreground: #FFFFFF;
+  --muted: #434343;
+  --muted-foreground: #8C8C8C;
+  --accent: #2C3E79;
+  --accent-foreground: #FFFFFF;
+  --destructive: #F5222D;
+  --destructive-foreground: #FFFFFF;
+  --border: #434343;
+  --input: #434343;
+  --ring: #4A90E2;
+  --chart-1: #4A90E2;
+  --chart-2: #2C3E79;
+  --chart-3: #52C41A;
+  --chart-4: #FAAD14;
+  --chart-5: #F5222D;
+  --sidebar: #1F2937;
+  --sidebar-foreground: #F5F7FA;
+  --sidebar-primary: #4A90E2;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #2C3E79;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: #374151;
+  --sidebar-ring: #4A90E2;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

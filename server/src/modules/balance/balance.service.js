@@ -1,0 +1,124 @@
+const Merchant = require('../merchant/merchant.model');
+const silkpayService = require('../../shared/services/silkpayService');
+const logger = require('../../shared/utils/logger');
+
+class BalanceService {
+  /**
+   * Get current balance
+   */
+  async getBalance(merchantId) {
+    const merchant = await Merchant.findById(merchantId);
+    
+    if (!merchant) {
+      const error = new Error('Merchant not found');
+      error.statusCode = 404;
+      error.code = 'MERCHANT_NOT_FOUND';
+      throw error;
+    }
+    
+    return {
+      merchant_no: merchant.merchant_no,
+      balance: merchant.balance,
+      last_synced: merchant.updatedAt
+    };
+  }
+
+  /**
+   * Sync balance with SilkPay
+   */
+  async syncBalance(merchantId) {
+    const merchant = await Merchant.findById(merchantId);
+    
+    if (!merchant) {
+      const error = new Error('Merchant not found');
+      error.statusCode = 404;
+      error.code = 'MERCHANT_NOT_FOUND';
+      throw error;
+    }
+
+    try {
+      // Query SilkPay for current balance
+      const balanceResponse = await silkpayService.getMerchantBalance();
+      
+      logger.info(`SilkPay Balance Response for ${merchantId}:`, balanceResponse);
+
+      // Official Spec Check: status === "200"
+      if (balanceResponse.status === '200' && balanceResponse.data) {
+        // Use totalAmount from SilkPay as the truth for wallet balance
+        const totalAmount = parseFloat(balanceResponse.data.totalAmount || 0);
+        
+        // Update merchant balance
+        merchant.balance.total = totalAmount;
+        
+        // Update available balance: use SilkPay's value if present, otherwise calculate
+        if (balanceResponse.data.availableAmount) {
+             merchant.balance.available = parseFloat(balanceResponse.data.availableAmount);
+        } else {
+             merchant.balance.available = totalAmount - merchant.balance.pending;
+        }
+        
+        await merchant.save();
+        
+        logger.info(`Balance synced for merchant ${merchant.merchant_no}`, {
+          silkpay_total: totalAmount,
+          available: merchant.balance.available,
+          pending: merchant.balance.pending
+        });
+        
+        return {
+          merchant_no: merchant.merchant_no,
+          balance: merchant.balance,
+          synced_at: new Date()
+        };
+      } else {
+        throw new Error(balanceResponse.message || 'Balance sync failed');
+      }
+    } catch (error) {
+      logger.error(`Balance sync failed for merchant ${merchant.merchant_no}:`, error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Reserve balance (internal - called when creating payout)
+   */
+  async reserveBalance(merchantId, amount) {
+    const merchant = await Merchant.findById(merchantId);
+    
+    if (merchant.balance.available < amount) {
+      const error = new Error('Insufficient balance');
+      error.statusCode = 400;
+      error.code = 'INSUFFICIENT_BALANCE';
+      throw error;
+    }
+    
+    merchant.balance.available -= amount;
+    merchant.balance.pending += amount;
+    await merchant.save();
+    
+    logger.info(`Reserved balance: ${amount} for merchant ${merchant.merchant_no}`);
+  }
+
+  /**
+   * Release balance (internal - called when payout succeeds/fails)
+   */
+  async releaseBalance(merchantId, amount, success = false) {
+    const merchant = await Merchant.findById(merchantId);
+    
+    merchant.balance.pending -= amount;
+    
+    if (success) {
+      // Payout succeeded - deduct from total
+      merchant.balance.total -= amount;
+    } else {
+      // Payout failed - return to available
+      merchant.balance.available += amount;
+    }
+    
+    await merchant.save();
+    
+    logger.info(`Released balance: ${amount} (success: ${success}) for merchant ${merchant.merchant_no}`);
+  }
+}
+
+module.exports = new BalanceService();

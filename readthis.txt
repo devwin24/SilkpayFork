@@ -1,0 +1,327 @@
+Error Code Description
+number	status	description
+1	200	Request successful
+2	402	merchant no invalid
+3	403	merchant order no invalid
+4	404	merchant order no max 64
+5	405	name is empty
+6	406	mobile is empty
+7	407	invalid IFSC code, length 11, first four bank IFSC and 5th digit 0
+8	408	invalid bank account number
+9	409	account hold name is empty
+10	410	notify url is empty
+11	411	sign is empty
+12	412	param payAmount invalid
+13	413	order no invalid
+14	414	return url is empty
+15	415	order expired
+16	416	order utr has been submitted
+17	417	utr has been submitted
+18	418	upstream order exception
+19	419	api temporarily unavailable
+20	420	beneficiary bank/mobile info invalid
+21	421	channel id cannot null
+22	422	invalid upi
+23	423	utr cannot empty
+24	424	utr is less 30 length
+25	501	order no not exist
+26	502	merchant not exist
+27	503	merchant inactive
+28	504	merchant account not exist
+29	505	channel is not open
+30	506	channel is not available
+31	507	merchant config not exist
+32	508	sign error
+33	509	create order error
+34	510	order request error
+35	511	platform config error
+36	512	merchant fee rate invalid
+37	513	insufficient balance
+38	514	the payment amount cannot be less than the merchant fee
+39	515	merchant order exist
+40	516	order status error
+41	517	kindly, order expired, please refresh.
+42	518	Kindly. Your Payment has been Processed Successfully
+ABOUT CALLBACK:
+Merchants need to return the string OK after receiving the callback to confirm that the callback is successful, otherwise we will retry 5 times.
+
+Integration Guide
+Overview
+This guide will help you quickly integrate the Silkpay API, from obtaining an API key to completing the payment process.
+
+Sandbox Base URL: https://api.dev.silkpay.ai
+Sandbox Base merchant: xxx
+Sandbox Base secret key: xxx
+After finish all the test environment work, we can go to production environment setup process.
+We will create a product merchant account for you which you can login from https://merchant.silkpay.ai/.
+Do remember to change password just after login for the first time.
+You can get the production secret key in 'Merchant Console' section and please also remember to add your service IP to the IP whitelist.
+The production environment Base API Url is https://api.silkpay.ai/.
+In addition, our backup domain is https://api.silkpay.help/ & https://merchant.silkpay.help/
+Workflow
+Step	API	Method	Parameter
+1	/transaction/payin/v2	POST	Create a payin order. Return the cashier payment link. All request types and return types are in JSON format.
+2	/transaction/payin/query	POST	Payin orders status query interface
+3	/callback	POST	callback
+4	/transaction/payin/submit/utr	POST	Bank UTR order re-order Note: If the amount does not match, the order re-order will fail
+5	/transaction/payin/submit/utr	POST	UTR query order
+6	/transaction/payout	POST	create a payout order
+7	/transaction/payout/query	POST	Payout orders status inquiry
+8	/callback	POST	callback
+9	/transaction/balance	POST	merchant balance inquiry
+Error Code Description
+status	description
+200	Request successful
+416	Parameter missing
+404	Merchant does not exist
+403	Wrong sign
+401	Wrong password
+513	Insufficient merchant balance
+506	Channel is not available
+515	merchant order exist
+FAQ
+Q:How to pay repeatedly?
+A: If the payment status is FAILED, please call /transaction/payin/v2 again to create a new payment order.
+Q:What should I do if the callback fails?
+A:Merchants need to return the string OK after receiving the callback to confirm that the callback is successful, otherwise we will retry 5 times.
+Q:How ofter in % of transactions the amount requested by user will differ?
+A:It depends on the type of bank account we are using.
+In the current Indian payment environment, whether it's a corporate account or a savings account, users are often required at the technical level to pay the full amount including decimals.
+However, on our side, we always send the callback based on the original order amount, and the credited balance (after deducting the payin fee) is also based on the order amount — not the amount actually received.
+Q:Do you support changed amount (if user's requested 300 but paid 350)?
+A:We do not support payments with modified amounts.
+However, some users — including fraudsters — intentionally change the amount. In such cases, we will not trigger a success callback, but the actual payment amount will still be credited to your available balance in our system for reconciliation.
+Please note that based on our experience, most of these modified-amount payments are related to suspicious or fraudulent activity.
+Q:Do you use UTR check to finalize transactions?
+A:Yes, we use UTR checks as part of our transaction confirmation process.
+If the payment is received but the order is not marked as successful, you can resubmit the UTR and order ID via our Telegram bot or through API for resubmitting UTR/orders.
+Q:What should I do if the order amount is inconsistent with the actual payment amount?
+A:We will refund according to the actual amount received
+-------------------------------------
+amount
+string
+required
+Order amount, example:100.00 inr
+Example:
+100.00
+
+mId
+string
+required
+Merchant number, provided after account opening, example: TEST
+
+mOrderId
+string
+required
+Merchant order number, within 64 characters, example: 12345678
+
+payOrderId
+string
+required
+When a merchant requests payment and places an order, the gateway order number is returned in the response result.
+
+timestamp
+number
+required
+Timestamp, accurate to milliseconds, example: 1647760272251
+
+utr
+string
+required
+UTR
+
+notifyUrl
+string
+required
+Callback notification address, for example: http://localhost/silkpay
+
+upi
+string
+bankNo
+string
+Account of Beneficiary.
+
+ifsc
+string
+IFSC of Beneficiary.
+
+name
+string
+required
+Name of Beneficiary.
+
+sign
+string
+required
+Signature, md5(mId+mOrderId+amount+timestamp+secret) is used for MD5 encryption, 32 characters in lowercase.
+
+
+---------------------------
+Create payout order
+post
+https://api.dev.silkpay.ai/transaction/payout
+create a payout order
+
+REQUEST SAMPLE
+const axios = require('axios').default;
+
+const options = {
+  method: 'POST',
+  url: 'https://api.dev.silkpay.ai/transaction/payout',
+  headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+  data: {
+    amount: '100.00',
+    mId: 'TEST',
+    mOrderId: 'o001',
+    timestamp: 1738917430509,
+    notifyUrl: 'http://localhost/silkpay',
+    upi: '',
+    bankNo: '2983900989',
+    ifsc: 'ICIC0000001',
+    name: 'MAND',
+    sign: 'd7ab0026e9c3059edabfb9b0a0a51df2'
+  }
+};
+
+try {
+  const { data } = await axios.request(options);
+  console.log(data);
+} catch (error) {
+  console.error(error);
+}
+
+
+RESPONSE SAMPLE
+{
+  "status": "200",
+  "message": "success",
+  "data": {
+    "payOrderId": "DF-0207163775560828775345156"
+  }
+}
+
+------------------------------------------
+
+Payout order status inquiry
+post
+https://api.dev.silkpay.ai/transaction/payout/query
+Payout order status inquiry
+
+REQUEST SAMPLE
+const axios = require('axios').default;
+
+const options = {
+  method: 'POST',
+  url: 'https://api.dev.silkpay.ai/transaction/payout/query',
+  headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+  data: {
+    mId: 'TEST',
+    mOrderId: 'o001',
+    timestamp: 1738917430509,
+    sign: 'd7ab0026e9c3059edabfb9b0a0a51df2'
+  }
+};
+
+try {
+  const { data } = await axios.request(options);
+  console.log(data);
+} catch (error) {
+  console.error(error);
+}
+
+
+RESPONSE SAMPLE
+{
+  "status": "200",
+  "message": "success",
+  "data": {
+    "amount": "100.00",
+    "payOrderId": "DF-0207163775560828775345156",
+    "utr": "null",
+    "sign": "cd0b7a5cca06f7b9456692add9cae6ed",
+    "mId": "TEST",
+    "mOrderId": "o001",
+    "status": "2",
+    "timestamp": 1738917709881
+  }
+}
+
+------------------------------------------
+
+Merchant balance inquiry
+post
+https://api.dev.silkpay.ai/transaction/balance
+merchant balance inquiry
+
+REQUEST SAMPLE
+const axios = require('axios').default;
+
+const options = {
+  method: 'POST',
+  url: 'https://api.dev.silkpay.ai/transaction/balance',
+  headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+  data: {
+    mId: 'TEST',
+    timestamp: 1738917430509,
+    sign: 'd7ab0026e9c3059edabfb9b0a0a51df2'
+  }
+};
+
+try {
+  const { data } = await axios.request(options);
+  console.log(data);
+} catch (error) {
+  console.error(error);
+}
+
+
+RESPONSE SAMPLE
+{
+  "status": "200",
+  "message": "success",
+  "data": {
+    "availableAmount": "259.5",
+    "pendingAmount": "0",
+    "totalAmount": "259.",
+    "sign": null
+  }
+}
+
+------------------------------------------
+
+Callback
+post
+https://api.dev.silkpay.ai/callback
+Callback
+
+REQUEST SAMPLE
+const axios = require('axios').default;
+
+const options = {
+  method: 'POST',
+  url: 'https://api.dev.silkpay.ai/callback',
+  headers: {'Content-Type': 'application/json', Accept: 'application/json'},
+  data: {
+    amount: '102.33',
+    payOrderId: 'DF-0207173510390431811270665',
+    mId: 'TEST',
+    mOrderId: '12345679',
+    utr: '112233',
+    sign: '80f7eb17fec33a6b7963fc113484642a',
+    status: '1',
+    timestamp: 1687244719629
+  }
+};
+
+try {
+  const { data } = await axios.request(options);
+  console.log(data);
+} catch (error) {
+  console.error(error);
+}
+
+RESPONSE SAMPLE 200
+{
+  OK
+}
+---------------------------
