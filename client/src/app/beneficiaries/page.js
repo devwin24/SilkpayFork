@@ -17,6 +17,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency, formatDate } from '@/utils/formatters';
+import { exportToCSV } from '@/utils/exportData';
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { BeneficiaryForm } from '@/components/beneficiaries/BeneficiaryForm';
 import {
@@ -94,33 +96,19 @@ export default function BeneficiariesPage() {
       return;
     }
 
-    // Convert beneficiaries to CSV
-    const headers = ['Name', 'Mobile', 'Account Number', 'IFSC Code', 'Bank Name', 'Status'];
-    const csvData = filteredBeneficiaries.map(b => [
-      b.name,
-      b.mobile,
-      b.account_number,
-      b.ifsc_code,
-      b.bank_name,
-      b.status || 'ACTIVE'
-    ]);
-
-    // Create CSV content
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.join(','))
-    ].join('\n');
-
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `beneficiaries_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      exportToCSV(
+          filteredBeneficiaries,
+          [
+              { key: 'name', label: 'Name' },
+              { key: 'account_number', label: 'Account Number' },
+              { key: 'bank_name', label: 'Bank Name' },
+              { key: 'ifsc_code', label: 'IFSC Code' },
+              { key: 'status', label: 'Status' },
+              { key: 'created_at', label: 'Date Added', format: (d) => formatDate(d, 'full') }
+          ],
+          'beneficiaries_export'
+      );
+      toast.success("Beneficiaries exported successfully");
   };
 
   const resetFilters = () => {
@@ -266,7 +254,23 @@ export default function BeneficiariesPage() {
            <Button variant="ghost" onClick={resetFilters}>Reset</Button>
       </div>
 
-      {/* ... Dialogs ... */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingBeneficiary ? 'Edit Beneficiary' : 'Add Beneficiary'}</DialogTitle>
+            <DialogDescription>
+              {editingBeneficiary 
+                ? 'Update beneficiary details below.' 
+                : 'Enter the details of the new beneficiary.'}
+            </DialogDescription>
+          </DialogHeader>
+          <BeneficiaryForm 
+            initialData={editingBeneficiary} // Pass initialData prop (check BeneficiaryForm prop name, previously used initialData in similar components)
+            onSubmit={editingBeneficiary ? handleUpdate : handleCreate}
+            onCancel={() => setOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
 
       {loading ? <div>Loading...</div> : <DataTable columns={columns} data={filteredBeneficiaries} />}
     </div>

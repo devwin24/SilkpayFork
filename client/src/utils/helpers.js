@@ -6,7 +6,10 @@ export const getStatusBadgeColor = (status) => {
     'INITIAL': 'bg-blue-500/15 text-blue-500 hover:bg-blue-500/25 border-blue-500/20',
     'PROCESSING': 'bg-orange-500/15 text-orange-500 hover:bg-orange-500/25 border-orange-500/20',
     'SUCCESS': 'bg-green-500/15 text-green-500 hover:bg-green-500/25 border-green-500/20',
-    'FAILED': 'bg-red-500/15 text-red-500 hover:bg-red-500/25 border-red-500/20'
+    'ACTIVE': 'bg-green-500/15 text-green-500 hover:bg-green-500/25 border-green-500/20',
+    'FAILED': 'bg-red-500/15 text-red-500 hover:bg-red-500/25 border-red-500/20',
+    'INACTIVE': 'bg-gray-500/15 text-gray-500 hover:bg-gray-500/25 border-gray-500/20',
+    'REJECTED': 'bg-red-500/15 text-red-500 hover:bg-red-500/25 border-red-500/20'
   };
   return colors[status] || 'bg-gray-500/15 text-gray-500 hover:bg-gray-500/25 border-gray-500/20';
 };

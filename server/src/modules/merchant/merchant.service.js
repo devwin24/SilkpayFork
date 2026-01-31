@@ -118,6 +118,7 @@ class MerchantService {
     }
     
     merchant.whitelist_ips = ips;
+    console.log("merchant.whitelist_ips: servic:",merchant.whitelist_ips);
     await merchant.save();
     
     logger.info(`IP whitelist updated for merchant: ${merchant.merchant_no}`);

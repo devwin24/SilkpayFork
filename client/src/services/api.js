@@ -1,5 +1,4 @@
-import { mockPayouts, mockBalance } from '../data/mockTransactions';
-import { mockBeneficiaries } from '../data/mockBeneficiaries';
+import { mockApiResponses } from '../data/mockApiResponses';
 
 // ==========================================
 // CONFIGURATION
@@ -10,41 +9,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/a
 // ==========================================
 // MOCK DATA REGISTRY
 // ==========================================
-const mockData = {
-  GET: {
-    '/payouts': { data: mockPayouts },
-    '/transactions': { data: { transactions: mockPayouts, total: mockPayouts.length } },
-    '/dashboard/overview': { data: mockBalance },
-    '/beneficiaries': { data: { beneficiaries: mockBeneficiaries, total: mockBeneficiaries.length } },
-    '/merchant/profile': { 
-      data: {
-        merchant_no: 'M-2024-8832',
-        name: 'Acme Corp Global',
-        email: 'admin@acmecorp.com',
-        mobile: '+91 98765 43210',
-        status: 'ACTIVE',
-      }
-    },
-    '/merchant/api-keys': {
-      data: {
-        secret_key: 'sk_live_51Hz...Ra8x',
-        whitelist_ips: ['192.168.1.1', '10.0.0.5'],
-      }
-    },
-    '/settings': {
-      data: {
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-        notifications: { email: true, sms: false },
-        webhook: { url: 'https://api.acmecorp.com/webhooks/silkpay' },
-        security: { two_factor_enabled: true },
-        session: { timeout: '30m' }
-      }
-    }
-  },
-  POST: {
-    default: { success: true, message: 'Operation successful' }
-  }
-};
+const mockData = mockApiResponses;
 
 // ==========================================
 // CLIENT IMPLEMENTATION (Fetch Wrapper)
@@ -73,8 +38,21 @@ const handleMockRequest = async (method, endpoint, payload) => {
         }
     }
 
+    if (endpoint === '/merchant/whitelist-ips' && method === 'PUT') {
+        return {
+            success: true,
+            data: { whitelist_ips: payload.ips || [] }
+        };
+    }
+
     const methodMocks = mockData[method] || {};
-    return methodMocks[endpoint] || methodMocks.default || { success: true };
+    const mockResponse = methodMocks[endpoint] || methodMocks.default || {};
+    
+    // Always wrap in success for consistency with backend
+    return {
+        success: true,
+        ...mockResponse
+    };
 };
 
 const request = async (endpoint, { method = 'GET', body, ...customConfig } = {}) => {
@@ -106,14 +84,27 @@ const request = async (endpoint, { method = 'GET', body, ...customConfig } = {})
         }
 
         if (!response.ok) {
-            // Try to parse error message from JSON response
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `API Error: ${response.statusText}`);
+            let errorMessage = `Request failed (${response.status})`;
+            try {
+                const errorData = await response.json();
+                // Prioritize 'message' or 'error' fields from backend
+                errorMessage = errorData.message || errorData.error || errorMessage;
+            } catch (jsonError) {
+                // Fallback for non-JSON responses (e.g. 502/504 HTML pages)
+                errorMessage = response.statusText || "Server communication error";
+            }
+            throw new Error(errorMessage);
         }
 
         return await response.json();
     } catch (error) {
         console.error(`API ${method} Error:`, error);
+        
+        // Smart Network Error Handling
+        if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+             throw new Error("Unable to connect to server. Please check your internet connection.");
+        }
+        
         throw error;
     }
 };

@@ -10,16 +10,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Bell, Shield, Wallet, Code, Save, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
+import { User, Bell, Shield, Wallet, Code, Save, ChevronDown, ChevronUp, KeyRound, Building2 } from 'lucide-react';
 import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 
-const PRESET_AVATARS = [
-    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    'https://images.unsplash.com/photo-1527980965255-d3b416303d12?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
-    'https://images.unsplash.com/photo-1633332755192-727a05c4013d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-];
+import { PRESET_AVATARS } from '@/lib/constants';
+import { getMerchantProfile, updateMerchantProfile, changePassword } from '@/services/merchantService';
+
+// Local avatars removed - using shared constants
 
 export default function SettingsPage() {
   const searchParams = useSearchParams();
@@ -47,8 +45,8 @@ export default function SettingsPage() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await api.get('/settings');
-        setSettings(res.data);
+        const data = await getMerchantProfile();
+        setSettings(data);
       } catch (error) {
         console.error("Failed to load settings", error);
       } finally {
@@ -74,7 +72,7 @@ export default function SettingsPage() {
   const saveAllSettings = async () => {
       setSaving(true);
       try {
-          await api.post('/settings/update', settings);
+          await updateMerchantProfile(settings);
           await new Promise(resolve => setTimeout(resolve, 1000));
           setHasChanges(false);
           toast.success('Settings saved successfully');
@@ -106,26 +104,14 @@ export default function SettingsPage() {
     setChangingPassword(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/merchant/change-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({ oldPassword, newPassword })
-      });
+      await changePassword({ oldPassword, newPassword });
 
-      const data = await response.json();
+      toast.success("Password changed successfully");
+      e.target.reset();
+      setPasswordSectionOpen(false);
 
-      if (response.ok) {
-        toast.success("Password changed successfully");
-        e.target.reset();
-        setPasswordSectionOpen(false);
-      } else {
-        toast.error(data.error?.message || "Failed to change password");
-      }
     } catch (error) {
-      toast.error("Failed to change password");
+      toast.error(error.response?.data?.error?.message || "Failed to change password");
     } finally {
       setChangingPassword(false);
     }
@@ -156,6 +142,32 @@ export default function SettingsPage() {
        </div>
 
        <div className="grid gap-6">
+
+            {/* 0. Account Info (Read Only) */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Building2 className="h-5 w-5" /> Account Information</CardTitle>
+                    <CardDescription>Your account details are managed by the administrator</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label>Merchant Name</Label>
+                        <div className="p-3 bg-muted rounded-md text-sm font-medium">{settings?.name}</div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Email Address</Label>
+                        <div className="p-3 bg-muted rounded-md text-sm font-medium">{settings?.email}</div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Merchant ID</Label>
+                        <div className="p-3 bg-muted rounded-md text-sm font-mono">{settings?.merchant_no}</div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Account Status</Label>
+                        <div className="pt-2 ps-1 text-lg font-medium"><StatusBadge status={settings?.status} /></div>
+                    </div>
+                </CardContent>
+            </Card>
             
             {/* 1. Profile Appearance */}
             <Card>
@@ -190,14 +202,14 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                         <Label className="text-base">Email Notifications</Label>
                         <Switch 
-                            checked={settings.notifications.email}
+                            checked={settings.notifications?.email}
                             onCheckedChange={(checked) => updateLocalSetting('notifications', { email: checked })}
                         />
                     </div>
                     <div className="flex items-center justify-between">
                         <Label className="text-base">SMS Notifications</Label>
                         <Switch 
-                            checked={settings.notifications.sms}
+                            checked={settings.notifications?.sms}
                             onCheckedChange={(checked) => updateLocalSetting('notifications', { sms: checked })}
                         />
                     </div>
@@ -214,7 +226,7 @@ export default function SettingsPage() {
                         <Label>Webhook URL</Label>
                         <Input 
                             placeholder="https://api.example.com/webhook" 
-                            value={settings.webhook.url}
+                            value={settings.webhook?.url}
                             onChange={(e) => updateLocalSetting('webhook', { url: e.target.value })}
                         />
                     </div>
@@ -230,7 +242,7 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between">
                         <Label className="text-base">Two-Factor Auth (2FA)</Label>
                         <Switch 
-                            checked={settings.security.two_factor_enabled}
+                            checked={settings.security?.two_factor_enabled}
                             onCheckedChange={(checked) => updateLocalSetting('security', { two_factor_enabled: checked })}
                         />
                     </div>
@@ -307,7 +319,7 @@ export default function SettingsPage() {
                     <div className="grid gap-2">
                         <Label>Session Timeout</Label>
                         <Select 
-                            value={settings.session.timeout}
+                            value={settings.session?.timeout}
                             onValueChange={(val) => updateLocalSetting('session', { timeout: val })}
                         >
                             <SelectTrigger>

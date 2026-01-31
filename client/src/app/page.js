@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { api } from '@/services/api';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Wallet, ArrowUpRight, Activity, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -25,10 +26,10 @@ export default function DashboardPage() {
         ]);
         
         // Backend returns: { success: true, data: { balance, todayPayouts, recentTransactions } }
-        if (dashboardRes.success && dashboardRes.data) {
-          setBalance(dashboardRes.data.balance);
+        if (dashboardRes.success && dashboardRes.data?.balance) {
+          const newBalance = dashboardRes.data.balance;
+          setBalance(newBalance);
         }
-
         // Sort payouts for recent activity
         const payoutsData = payoutsRes.success ? payoutsRes.data.payouts : [];
         const recent = (payoutsData || []).map(i => ({
@@ -51,17 +52,6 @@ export default function DashboardPage() {
     };
     fetchData();
   }, []);
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-    }).format(amount);
-  };
-
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
 
   return (
     <div className="space-y-6">
@@ -136,7 +126,7 @@ export default function DashboardPage() {
                                         <Badge variant="secondary" className="text-[10px] px-1 py-0 h-5">
                                             {item.label}
                                         </Badge>
-                                        <span className="text-xs text-muted-foreground">{formatDate(item.date)}</span>
+                                        <span className="text-xs text-muted-foreground">{formatDate(item.date, 'long')}</span>
                                     </div>
                                 </div>
                                 <div className="text-sm font-bold text-red-600">

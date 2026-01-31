@@ -15,25 +15,52 @@ const app = express();
 app.use(helmet());
 app.use(mongoSanitize());
 
-// CORS
+// CORS - Parse multiple origins from environment
+const corsOrigins = process.env.CORS_ORIGINS 
+  ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
+  : ['http://localhost:3000'];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(',') || 'http://localhost:3000',
-  credentials: true
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in whitelist
+    if (corsOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body Parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate Limiting
+// Rate Limiting - General API protection
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Max 100 requests per windowMs
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Stricter in production
   standardHeaders: true,
   legacyHeaders: false,
-  message: 'Too many requests from this IP, please try again later'
+  message: 'Too many requests from this IP, please try again later',
+  skip: (req) => req.path === '/health' // Don't rate limit health checks
 });
 app.use('/api/', limiter);
+
+// Auth-specific rate limiting (stricter for login/password reset)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Only 5 attempts per 15 minutes
+  skipSuccessfulRequests: true, // Don't count successful logins
+  message: 'Too many login attempts, please try again later'
+});
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
 
 // Request ID (for tracing)
 const requestId = require('./shared/middleware/requestId');

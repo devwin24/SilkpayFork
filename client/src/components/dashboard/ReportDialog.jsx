@@ -7,6 +7,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { api } from '@/services/api';
 import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { exportToCSV } from '@/utils/exportData';
+import { formatCurrency, formatDate } from '@/utils/formatters';
 
 export function ReportDialog({ open, onOpenChange }) {
     const [reportType, setReportType] = useState('transaction_history');
@@ -17,38 +19,66 @@ export function ReportDialog({ open, onOpenChange }) {
     const handleDownload = async () => {
         setLoading(true);
         try {
-            // BACKEND LIMITATION: Currently only Transaction History (CSV) is supported via GET /api/transactions/export
             if (reportType === 'transaction_history') {
-                 // Construct query params for filtering
-                 const params = new URLSearchParams();
-                 if (dateRange === 'last_7_days') {
-                     const date = new Date();
-                     date.setDate(date.getDate() - 7);
-                     params.append('start_date', date.toISOString());
-                 } else if (dateRange === 'last_30_days') {
-                     const date = new Date();
-                     date.setDate(date.getDate() - 30);
-                     params.append('start_date', date.toISOString());
-                 }
-                 // ... add more date logic if needed
-                 
-                 // Trigger browser download by opening URL
-                 const downloadUrl = `${process.env.NEXT_PUBLIC_API_URL}/transactions/export?${params.toString()}`;
-                 
-                 // We use a hidden link to trigger the download with auth token if needed
-                 // Since standard links don't carry headers, we might need a fetch-blob approach if auth is strict.
-                 // But for now, let's try the direct api.downloadReport wrapper which handles blob.
-                 
-                 await api.downloadReport({ reportType, dateRange, format });
-                 toast.success("Statement Downloaded");
-                 onOpenChange(false);
+                // Calculate date range
+                let startDate = new Date();
+                if (dateRange === 'last_7_days') {
+                    startDate.setDate(startDate.getDate() - 7);
+                } else if (dateRange === 'last_30_days') {
+                    startDate.setDate(startDate.getDate() - 30);
+                } else if (dateRange === 'this_month') {
+                    startDate =  new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+                } else if (dateRange === 'previous_month') {
+                    startDate = new Date(startDate.getFullYear(), startDate.getMonth() - 1, 1);
+                }
+                
+                // Fetch transactions
+                const response = await api.get('/transactions');
+                const transactions = response.data?.transactions || [];
+                
+                // Filter by date range
+                const filtered = transactions.filter(t => {
+                    const txDate = new Date(t.created_at);
+                    return txDate >= startDate;
+                });
+                
+                if (filtered.length === 0) {
+                    toast.info('No transactions found for selected date range');
+                    return;
+                }
+                
+                // Export based on format
+                if (format === 'csv') {
+                    exportToCSV(
+                        filtered,
+                        [
+                            { key: 'mOrderId', label: 'Order ID' },
+                            { key: 'beneficiary_name', label: 'Beneficiary' },
+                            { key: 'account_number', label: 'Account Number' },
+                            { key: 'ifsc_code', label: 'IFSC Code' },
+                            { key: 'bank_name', label: 'Bank' },
+                            { key: 'amount', label: 'Amount (₹)', format: formatCurrency },
+                            { key: 'status', label: 'Status' },
+                            { key: 'utr', label: 'UTR' },
+                            { key: 'created_at', label: 'Date', format: (d) => formatDate(d, 'full') }
+                        ],
+                        `transactions_${dateRange}`
+                    );
+                    toast.success('CSV Downloaded Successfully');
+                    // Only close modal on successful download
+                    onOpenChange(false);
+                } else {
+                    // PDF not available - keep modal open
+                    toast.info('PDF export coming soon', { description: 'Use CSV format for now' });
+                }
             } else {
-                 toast.info("Coming Soon", { description: "This report type is not yet available." });
+                // Other report types not available - keep modal open
+                toast.info('Coming Soon', { description: 'This report type is not yet available.' });
             }
-
         } catch (error) {
-            console.error("Report generation failed", error);
-            toast.error("Failed to download report");
+            console.error('Report generation failed', error);
+            toast.error('Failed to download report');
+            // Keep modal open on error so user can retry
         } finally {
             setLoading(false);
         }

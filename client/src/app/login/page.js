@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { login, forgotPassword, resetPassword } from '@/services/authService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
@@ -32,36 +33,17 @@ function LoginForm() {
     const password = formData.get('password');
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+      const data = await login(email, password);
+      
+      toast.success("Login Successful", {
+        description: `Welcome back, ${data.merchant.name || 'to SilkPay'}`
       });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Store JWT token and merchant info
-        localStorage.setItem('authToken', data.data.token);
-        localStorage.setItem('merchantInfo', JSON.stringify(data.data.merchant));
-        
-        toast.success("Login Successful", {
-          description: `Welcome back, ${data.data.merchant.name || 'to SilkPay'}`
-        });
-        
-        // Redirect to dashboard
-        router.push('/');
-      } else {
-        // Handle API errors
-        toast.error(data.error?.message || "Login failed", {
-          description: data.requestId ? `Support ID: ${data.requestId}` : undefined
-        });
-      }
+      
+      // Redirect to dashboard
+      router.push('/');
     } catch (error) {
       console.error('Login error:', error);
-      toast.error("Network error", {
-        description: "Please check your connection and try again"
-      });
+      toast.error(error.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -73,40 +55,28 @@ function LoginForm() {
 
     try {
       // Call forgot password API
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail })
+      const data = await forgotPassword(forgotEmail);
+
+      toast.success("Reset Link Sent", {
+        description: "Check your email for password reset instructions."
       });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        toast.success("Reset Link Sent", {
-          description: "Check your email for password reset instructions."
-        });
-        
-        // In development, show the token
-        if (data.data?.token) {
+      
+      // In development, show the token for testing
+      if (data.data?.token) {
+        // Only log in development (security: don't expose token in production)
+        if (process.env.NODE_ENV === 'development') {
           console.log('Reset token (dev):', data.data.token);
-          setResetToken(data.data.token);
-          setForgotStep('reset');
-        } else {
-          // In production, just close modal
-          setShowForgot(false);
-          setForgotEmail('');
         }
+        setResetToken(data.data.token);
+        setForgotStep('reset');
       } else {
-        // Show error with request ID if available
-        toast.error(data.error?.message || "Failed to send reset link", {
-          description: data.requestId ? `Support ID: ${data.requestId}` : undefined
-        });
+        // In production, just close modal (user checks email)
+        setShowForgot(false);
+        setForgotEmail('');
       }
     } catch (error) {
       console.error('Forgot password error:', error);
-      toast.error("Network error", {
-        description: "Please check your connection and try again"
-      });
+      toast.error(error.message || "Failed to send reset link");
     } finally {
       setLoading(false);
     }
@@ -126,26 +96,17 @@ function LoginForm() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: resetToken, password: newPassword })
-      });
+      await resetPassword(resetToken, newPassword);
 
-      if (response.ok) {
-        toast.success("Password Reset Successful", {
-          description: "You can now login with your new password"
-        });
-        setShowForgot(false);
-        setForgotStep('email');
-        setResetToken('');
-        setForgotEmail('');
-      } else {
-        const data = await response.json();
-        toast.error(data.error?.message || "Invalid or expired reset token");
-      }
+      toast.success("Password Reset Successful", {
+        description: "You can now login with your new password"
+      });
+      setShowForgot(false);
+      setForgotStep('email');
+      setResetToken('');
+      setForgotEmail('');
     } catch (error) {
-      toast.error("Failed to reset password");
+      toast.error(error.message || "Failed to reset password");
     } finally {
       setLoading(false);
     }

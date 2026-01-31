@@ -203,6 +203,7 @@ function APISecurityCard({ initialKeys }) {
         try {
             // Corrected endpoint: PUT /merchant/whitelist-ips
             const res = await api.put('/merchant/whitelist-ips', { ips });
+            console.log(res);
             if (res.success) {
                 setKeys(prev => ({ ...prev, whitelist_ips: res.data.whitelist_ips }));
                 toast.success("IP Whitelist updated");

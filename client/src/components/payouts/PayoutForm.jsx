@@ -260,7 +260,7 @@ function ExistingPayoutForm({ onSubmit, loading, beneficiaries }) {
                                             <SelectValue placeholder="Select a beneficiary" />
                                         </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent>
+                                        <SelectContent className="max-h-[200px]">
                                             {beneficiaries.map(ben => (
                                                 <SelectItem key={ben.id} value={ben.id}>
                                                     {ben.name} - {ben.bank_name}

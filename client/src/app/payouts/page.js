@@ -14,7 +14,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { formatAmount, formatTimestamp } from "@/utils/helpers";
+import { formatCurrency, formatDate } from '@/utils/formatters';
+import { exportToCSV } from '@/utils/exportData';
 import { StatusBadge } from "@/components/shared/StatusBadge";
 
 export default function PayoutsPage() {
@@ -92,28 +93,23 @@ export default function PayoutsPage() {
           return;
       }
       
-      const csvContent = [
-          ["ID", "Order ID", "Beneficiary", "Account", "Amount", "Status", "Date"],
-          ...filteredPayouts.map(p => [
-              p.id,
-              p.mOrderId,
-              p.beneficiary_name,
-              p.account_number,
-              p.amount,
-              p.status,
-              new Date(p.created_at).toLocaleString()
-          ])
-      ].map(e => e.join(",")).join("\n");
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", `payouts_export_${Date.now()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      exportToCSV(
+          filteredPayouts,
+          [
+              { key: 'id', label: 'ID' },
+              { key: 'mOrderId', label: 'Order ID' },
+              { key: 'beneficiary_name', label: 'Beneficiary' },
+              { key: 'account_number', label: 'Account Number' },
+              { key: 'ifsc_code', label: 'IFSC Code' },
+              { key: 'bank_name', label: 'Bank' }, 
+              { key: 'amount', label: 'Amount (₹)', format: formatCurrency },
+              { key: 'status', label: 'Status' },
+              { key: 'utr', label: 'UTR' },
+              { key: 'created_at', label: 'Date', format: (d) => formatDate(d, 'full') }
+          ],
+          'payouts_export'
+      );
+      toast.success('Payouts exported successfully');
   };
 
   // Helpers removed - using shared utils
@@ -152,7 +148,7 @@ export default function PayoutsPage() {
                Amount <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
         ),
-        cell: ({ row }) => <div className="font-medium">{formatAmount(row.getValue("amount"))}</div>,
+        cell: ({ row }) => <div className="font-medium">{formatCurrency(row.getValue("amount"))}</div>,
       },
       {
         accessorKey: "status",
@@ -166,7 +162,7 @@ export default function PayoutsPage() {
                Date <ArrowUpDown className="ml-2 h-4 w-4" />
             </Button>
         ),
-        cell: ({ row }) => <div className="text-sm text-muted-foreground">{formatTimestamp(row.getValue("created_at"))}</div>,
+        cell: ({ row }) => <div className="text-sm text-muted-foreground">{formatDate(row.getValue("created_at"), 'long')}</div>,
       },
   ];
 
