@@ -55,7 +55,7 @@ app.use('/api/', limiter);
 // Auth-specific rate limiting (stricter for login/password reset)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Only 5 attempts per 15 minutes
+  max: 15, // Only 5 attempts per 15 minutes
   skipSuccessfulRequests: true, // Don't count successful logins
   message: 'Too many login attempts, please try again later'
 });
@@ -101,6 +101,11 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
+});
+
+//check
+app.get('/', (req, res) => {
+  res.status(200).send("BACKEND working");
 });
 
 // API Routes
